@@ -416,6 +416,21 @@ static int insert(char c, int draw) {
     return 0;
 }
 
+static void history_search_prefix(int forward) {
+    int inc = forward ? -1 : 1;
+    for (int i = gbl_historyi + inc; i > 0 && i < gbl_history_count; i+=inc) {
+        if (strncmp(gbl_buf, gbl_history[i], gbl_pos) == 0) {
+            strncpy(gbl_buf, gbl_history[i], JANET_LINE_MAX - 1);
+            gbl_historyi = i;
+            gbl_len = (int) strlen(gbl_buf);
+            gbl_buf[gbl_len] = '\0';
+            refresh();
+            return;
+        }
+    }
+
+}
+
 static void historymove(int delta) {
     if (gbl_history_count > 1) {
         janet_free(gbl_history[gbl_historyi]);
@@ -932,10 +947,16 @@ static int line() {
                 clearlines();
                 return 0;
             case 14: /* ctrl-n */
-                historymove(-1);
+                if (gbl_pos > 0)
+                    history_search_prefix(1);
+                else
+                    historymove(-1);
                 break;
             case 16: /* ctrl-p */
-                historymove(1);
+                if (gbl_pos > 0)
+                    history_search_prefix(0);
+                else
+                    historymove(1);
                 break;
             case 21: { /* ctrl-u */
                 memmove(gbl_buf, gbl_buf + gbl_pos, gbl_len - gbl_pos);
